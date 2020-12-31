@@ -1,0 +1,171 @@
+import tweepy
+import json
+import collections
+import numpy as np
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud, STOPWORDS
+import re
+import string
+import csv
+import itertools
+from collections import Counter
+import pandas as pd 
+import operator
+from operator import itemgetter
+from os import path
+from PIL import Image, Image
+import matplotlib.colors as clr
+
+#Conexión con twitter
+consumer_key = "XXXXXXXXXX"
+consumer_secret = "XXXXXXXXXX"
+access_token = "XXXXXXXXXX"
+access_token_secret = "XXXXXXXXXX"
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+
+#Extracción de tweets
+tweets=[]
+for tweet in tweepy.Cursor(api.search, q="vicentin", tweet_mode="extended", lang="es", encoding = "latin1").items(5000):
+    try:
+        tweets.append(tweet.retweeted_status.full_text)
+    except AttributeError:  # No es retweet
+        tweets.append(tweet.full_text)
+
+#Transformación de múltiples listas en una sola lista plana
+lista=[]
+for tweet in tweets:
+    tweet = tweet.replace("\n",'').replace('\r', '')
+    dato = tweet.split("'")
+    for palabra in dato:
+            spli=palabra.split()
+            lista.append(spli)
+
+lista_plana = []
+
+#Corrección de minusculas, puntos, etc.
+for l in lista:
+    for item in l:
+        item= item.replace("." + "!" + "?" + "..." +"https" + "https://t.co/" + ".com" +'"'+ "http","")
+        item= item.lower()
+        lista_plana.append(item)
+
+#Función contadora de palabras (devuelve un diccionario):
+def listaPalabrasDicFrec(listaPalabras):
+    frecuenciaPalab = [listaPalabras.count(p) for p in listaPalabras]
+    return dict(list(zip(listaPalabras,frecuenciaPalab)))
+
+freq=listaPalabrasDicFrec(lista_plana)
+
+#Creación de una lista con palabras y otra con cantidad de las mismas
+
+keys=list(freq.keys())
+values= list(freq.values())
+
+[i for i in keys if 2 <=  len(i) <= 10]
+
+#Conversión a CSV y agregado de titulos
+vicentin_prueba=open('vicentin_prueba.csv', 'w', encoding="utf8")
+with vicentin_prueba as f:
+    writer = csv.writer(f)
+    writer.writerow(['keys','values'])
+    writer.writerows(zip(keys,values))
+
+colors = ["#7FFF00", "#006400"]
+cmap=clr.LinearSegmentedColormap.from_list("mycmap",colors)
+
+STOPWORDS = STOPWORDS.union(set([
+    "a", "actualmente", "adelante", "además", "afirmó", "agregó", "ahí", "ahora",
+    "cc", "this", "pa", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+    "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "al",
+    "algo", "algún", "algún", "alguna", "algunas", "alguno", "algunos",
+    "alrededor", "ambos", "ampleamos", "añadió", "ante", "anterior", "antes", " https", "https ", " https ", "com ", "co ", " com", " co", " co ", " com "
+    "apenas", "aproximadamente", "aquel", "aquellas", "aquellos", "aqui",
+    "aquí", "arriba", "aseguró", "así", "atras", "aún", "aunque", "ayer",
+    "bajo", "bastante", "cada", "casi", "cerca", "cierta", "ciertas", "cierto", "ciertos", "cinco",
+    "comentó", "como", "cómo", "con", "conocer", "conseguimos", "conseguir",
+    "considera", "consideró", "consigo", "consigue", "consiguen", "consigues", "cosas", "creo", "cual", "cuales", "cualquier", "cuando",
+    "cuanto", "cuatro", "cuenta", "da", "dado", "dan", "dar", "de", "debe",
+    "decir", "dejó", "del", "demás", "dentro", "desde",
+    "después", "dice", "dicen", "dicho", "dieron", "diferente", "diferentes",
+    "dijeron", "dijo", "dio", "donde", "dos", "durante", "e", "ejemplo", "el",
+    "de", "la", "el", "porfas", "t", "p", "d", "est",
+    "él", "ella", "ellas", "ello", "ellos", "embargo", "empleais", "emplean",
+    "emplear", "empleas", "en", "encima", "encuentra", "entonces",
+    "entre", "era", "eramos", "eran", "eras", "eres", "es", "esa", "esas",
+    "ese", "eso", "esos", "esta", "ésta", "está", "estaba", "estaban",
+    "estado", "estais", "estamos", "estan", "están", "estar", "estará",
+    "estas", "éstas", "este", "éste", "esto", "estos", "éstos", "estoy",
+    "estuvo", "ex", "existe", "existen", "explicó", "expresó", "fin", "fue" "fueron", "fui", "fuimos", "gran", "grandes", "gueno", "ha", "osea", "país", "país", "argentina",
+    "haber", "había", "habían", "habrá", "hace", "haceis", "hacemos", "hacen", "nación", "nacion", " nación ", " nacion ", "diez", " diez ", "uno", "dos", "tres", "cuatro",
+    "hacer", "hacerlo", "haces", "hacia", "haciendo", "hago", "han", "hasta", "cinco", "seis", "siete", "ocho", "nueve" 
+    "hay", "haya", "he", "hecho", "hemos", "hicieron", "hizo", "hoy", "hubo",
+    "igual", "incluso", "indicó", "informó", "intenta", "intentais",
+    "intentamos", "intentan", "intentar", "intentas", "intento", "ir", "junto",
+    "la", "lado", "largo", "las", "le", "les", "llegó", "lleva", "llevar",
+    "lo", "los", "luego", "lugar", "manera", "manifestó", "más", "mayor", "me",
+    "mediante", "mejor", "mencionó", "menos", "mi", "mientras", "mio", "misma",
+    "mismas", "mismo", "mismos", "modo", "momento", "mucha", "muchas", "mucho",
+    "muchos", "muy", "nada", "nadie", "ni", "ningún", "ninguna", "ningunas",
+    "ninguno", "ningunos", "no", "nos", "nosotras", "nosotros", "nuestra",
+    "nuestras", "nuestro", "nuestros", "nueva", "nuevas", "nuevo", "nuevos",
+    "nunca", "o", "ocho", "otra", "otras", "otro", "otros", "para", "parece",
+    "parte", "partir", "pasada", "pero", "pesar", "poca", "pocas",
+    "poco", "pocos", "podeis", "podemos", "poder", "podrá", "podrán", "podria",
+    "podría", "podriais", "podriamos", "podrian", "podrían", "podrias",
+    "poner", "por", "porque", "por qué", "posible", "primer", "primera",
+    "primero", "primeros", "principalmente",  "próximo", "próximos", "pudo", "pueda", "puede", "pueden",
+    "puedo", "pues", "que", "qué", "quedó", "queremos", "quien", "quién",
+    "quienes", "quiere", "realizado", "realizar", "realizó", "respecto",
+    "sabe", "sabeis", "sabemos", "saben", "saber", "sabes", "se", "sea",
+    "sean", "según", "segunda", "segundo", "seis", "señaló", "ser", "será",
+    "serán", "sería", "si", "sí", "sido", "siempre", "siendo", "siete",
+    "sigue", "siguiente", "sin", "sino", "sobre", "sois", "sola", "solamente",
+    "solas", "solo", "sólo", "solos", "somos", "son", "soy", "su", "sus",
+    "tal", "también", "tampoco", "tan", "tanto", "tendrá", "tendrán", "teneis",
+    "tenemos", "tener", "tenga", "tengo", "tenía", "tenido", "tercera",
+    "tiempo", "tiene", "tienen", "toda", "todas", "todavía", "todo", "todos",
+    "total", "trabaja", "trabajais", "trabajamos", "trabajan", "trabajar",
+    "trabajas", "trabajo", "tras", "trata", "través", "tres", "tuvo", "tuyo",
+    "tu", "te", "pq", "mas", "qie", "us", "has", "ti", "ahi", "mis", "tus",
+    "do", "X", "Ven", "mo", "Don", "dia", "PT", "sua", "q", "x", "i", 
+    "última", "últimas", "ultimo", "último", "últimos", "un", "una", "unas",
+    "uno", "unos", "usa", "usais", "usamos", "usan", "usar", "usas", "uso",
+    "usted", "va", "vais", "valor", "vamos", "van", "varias", "varios", "vaya", "empresa",
+    "veces", "ver", "verdad", "verdadera", "verdadero", "vez", "vosotras",
+    "n", "s", "of", "c", "the", "m", "qu", "to", "as", "is",
+    "asi", "via", "sera", "tambien", "vosotros", "voy", "y", "ya", "yo", "cierto", "no", "imagino", "confirma", "vicentin", "Vicentín", "año", "values", "co", "vos", "keys", "https","com",".com", "dia", "santa fe", "fe", "santa"]))
+
+text = ''
+with open('vicentin_prueba.csv', encoding ="utf8") as f:
+    reader = csv.reader(f)
+    for row in reader:
+        text += ' '.join(row) + ' '
+
+
+##print(type(STOPWORDS))
+
+
+x, y = np.ogrid[:800, :800]
+
+plant_mask = np.array(Image.open(path.join("planta.png")))
+
+wc = WordCloud(
+    background_color="white",
+    stopwords=STOPWORDS,
+    repeat=False,
+    contour_width=0,
+    scale=3,
+    mask=plant_mask,
+    colormap=cmap
+    )
+
+
+
+wc.generate(text)
+
+plt.axis("off")
+plt.imshow(wc, interpolation="bilinear")
+plt.show()
